@@ -353,7 +353,7 @@ def generate_data(
             with open(os.path.join(get_dir('data', 'bcnf-data', create=True), name + '.pkl'), 'wb') as f:
                 pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
-        print(f'accepted: {accepted_count}, rejected: {rejected_count}', end='\r')
+        # print(f'accepted: {accepted_count}, rejected: {rejected_count}', end='\r')
         pbar.update(1)
         if print_acc_rej:
             pbar.set_postfix(accepted=accepted_count, rejected=rejected_count, ratio=accepted_count / (accepted_count + rejected_count))
