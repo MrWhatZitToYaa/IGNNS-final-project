@@ -16,7 +16,7 @@ def sample_from_config(values: dict
     if distribution_type == 'uniform':
         if "min" not in values or "max" not in values:
             raise ValueError('min and max must be defined for uniform distribution')
-        return np.random.uniform(values['min'], values['max'])
+        return np.random.uniform(0, 1)
     elif distribution_type == 'gaussian':
         return np.random.normal(0, 1)  # mean and std are used as parameters for the standard normal distribution later
     elif distribution_type == 'gamma':
@@ -37,20 +37,21 @@ def get_cams_position(cam_radiants: np.ndarray = np.array([0, 0]),
     return cams
 
 
-def accept_visibility(visibility: float
-                      ) -> bool:
-    # assuming uniform visibility distribution between 0 and 1: acceptance rate of ~50 %
-    if visibility > 0.75:
+def accept_visibility(cams: list[np.ndarray]) -> bool:
+    vis = np.sum([np.sum(cam) / len(cam) for cam in cams]) / len(cams)
+
+    if vis > 0.75:
         return True
-    elif 1 / (1 + np.exp(-(visibility - 0.5) * 10)) > np.random.uniform(0, 1):  # modified sigmoid
+    elif (1 / (1 + np.exp(-(vis - 0.5) * 10))) / 1.5 > np.random.uniform(0, 1):  # modified sigmoid
         return True
     else:
         return False
 
 
-def accept_traveled_distance(distance: float) -> bool:
-    # assuming uniform distance distribution between 0 m and 50 m: acceptance rate of ~70 %
-    ratio = distance / 50  # 50 m is just a base reference (diameter of the camera circle)
+def accept_traveled_distance(distance: float,
+                             cam_radius: float) -> bool:
+    # assuming uniform distance distribution between 0 m and cam_radius: acceptance rate of ~70 %
+    ratio = distance / cam_radius
     if ratio > 0.75:
         return True
     elif np.sqrt(ratio) > np.random.uniform(0, 1):  # square root acceptance
@@ -68,7 +69,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['x0']['x0_xy']['distribution'] == 'gaussian':
         r_x = np.sqrt(np.abs(sample_from_config(config['x0']['x0_xy']))) * config['x0']['x0_xy']['std'] + config['x0']['x0_xy']['mean']
     elif config['x0']['x0_xy']['distribution'] == 'uniform':
-        r_x = sample_from_config(config['x0']['x0_xy'])
+        r_x = np.sqrt(sample_from_config(config['x0']['x0_xy'])) * (config['x0']['x0_xy']['max'] - config['x0']['x0_xy']['min']) + config['x0']['x0_xy']['min']
 
     phi = np.random.uniform(0, 2 * np.pi)
 
@@ -78,7 +79,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['x0']['x0_z']['distribution'] == 'gaussian':
         x0_z = sample_from_config(config['x0']['x0_z']) * config['x0']['x0_z']['std'] + config['x0']['x0_z']['mean']
     elif config['x0']['x0_z']['distribution'] == 'uniform':
-        x0_z = sample_from_config(config['x0']['x0_z'])
+        x0_z = sample_from_config(config['x0']['x0_z']) * (config['x0']['x0_z']['max'] - config['x0']['x0_z']['min']) + config['x0']['x0_z']['min']
 
     x0 = np.array([x0_x, x0_y, x0_z])
 
@@ -86,7 +87,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['v0']['v0_xy']['distribution'] == 'gaussian':
         r_v = np.sqrt(np.abs(sample_from_config(config['v0']['v0_xy']))) * config['v0']['v0_xy']['std'] + config['v0']['v0_xy']['mean']
     elif config['v0']['v0_xy']['distribution'] == 'uniform':
-        r_v = sample_from_config(config['v0']['v0_xy'])
+        r_v = np.sqrt(sample_from_config(config['v0']['v0_xy'])) * (config['v0']['v0_xy']['max'] - config['v0']['v0_xy']['min']) + config['v0']['v0_xy']['min']
 
     phi_v = np.random.uniform(0, 2 * np.pi)
 
@@ -96,7 +97,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['v0']['v0_z']['distribution'] == 'gaussian':
         v0_z = sample_from_config(config['v0']['v0_z']) * config['v0']['v0_z']['std'] + config['v0']['v0_z']['mean']
     elif config['v0']['v0_z']['distribution'] == 'uniform':
-        v0_z = sample_from_config(config['v0']['v0_z'])
+        v0_z = sample_from_config(config['v0']['v0_z']) * (config['v0']['v0_z']['max'] - config['v0']['v0_z']['min']) + config['v0']['v0_z']['min']
 
     v0 = np.array([v0_x, v0_y, v0_z])
 
@@ -104,7 +105,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['w']['w_xy']['distribution'] == 'gaussian':
         r_x = np.sqrt(np.abs(sample_from_config(config['w']['w_xy']))) * config['w']['w_xy']['std'] + config['w']['w_xy']['mean']
     elif config['w']['w_xy']['distribution'] == 'uniform':
-        r_x = sample_from_config(config['w']['w_xy'])
+        r_x = np.sqrt(sample_from_config(config['w']['w_xy'])) * (config['w']['w_xy']['max'] - config['w']['w_xy']['min']) + config['w']['w_xy']['min']
 
     phi_w = np.random.uniform(0, 2 * np.pi)
 
@@ -114,7 +115,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['w']['w_z']['distribution'] == 'gaussian':
         w_z = sample_from_config(config['w']['w_z']) * config['w']['w_z']['std'] + config['w']['w_z']['mean']
     elif config['w']['w_z']['distribution'] == 'uniform':
-        w_z = sample_from_config(config['w']['w_z'])
+        w_z = sample_from_config(config['w']['w_z']) * (config['w']['w_z']['max'] - config['w']['w_z']['min']) + config['w']['w_z']['min']
 
     w = np.array([w_x, w_y, w_z])
 
@@ -123,7 +124,7 @@ def sample_ballistic_parameters(num_cams: int = 2,
     if config['a']['distribution'] == 'gaussian':
         r_a = np.cbrt(np.abs(sample_from_config(config['a']))) * config['a']['std'] + config['a']['mean']
     elif config['a']['distribution'] == 'uniform':
-        r_a = sample_from_config(config['a'])
+        r_a = np.cbrt(sample_from_config(config['a'])) * (config['a']['max'] - config['a']['min']) + config['a']['min']
 
     phi_a = np.random.uniform(0, 2 * np.pi)
     theta_a = np.random.uniform(0, np.pi)
@@ -135,39 +136,60 @@ def sample_ballistic_parameters(num_cams: int = 2,
     a = np.array([a_x, a_y, a_z])
 
     # grav
-    g_z = sample_from_config(config['g'])
+    if config['g']['distribution'] == 'gamma':
+        g_z = sample_from_config(config['g'])
+    elif config['g']['distribution'] == 'uniform':
+        g_z = sample_from_config(config['g']) * (config['g']['max'] - config['g']['min']) + config['g']['min']
 
     g = np.array([0, 0, -g_z])
 
     # b
     # density of atmosphere
-    rho = sample_from_config(config['rho'])
+    if config['rho']['distribution'] == 'gamma':
+        rho = sample_from_config(config['rho'])
+    elif config['rho']['distribution'] == 'uniform':
+        rho = sample_from_config(config['rho']) * (config['rho']['max'] - config['rho']['min']) + config['rho']['min']
 
     # radius of ball
-    r = sample_from_config(config['r_ball'])
+    if config['r_ball']['distribution'] == 'gamma':
+        r = sample_from_config(config['r_ball'])
+    elif config['r_ball']['distribution'] == 'uniform':
+        r = sample_from_config(config['r_ball']) * (config['r_ball']['max'] - config['r_ball']['min']) + config['r_ball']['min']
 
     # area of thown object
     A = np.pi * r**2
 
     # drag coefficient
-    Cd = sample_from_config(config['Cd'])
+    if config['Cd']['distribution'] == 'gamma':
+        Cd = sample_from_config(config['Cd'])
+    elif config['Cd']['distribution'] == 'uniform':
+        Cd = sample_from_config(config['Cd']) * (config['Cd']['max'] - config['Cd']['min']) + config['Cd']['min']
 
     b = rho * A * Cd
 
     # mass
-    m = sample_from_config(config['m'])
+    if config['m']['distribution'] == 'gamma':
+        m = sample_from_config(config['m'])
+    elif config['m']['distribution'] == 'uniform':
+        m = sample_from_config(config['m']) * (config['m']['max'] - config['m']['min']) + config['m']['min']
 
     # second cam position
-    cam_radian_array = [sample_from_config(config['cam_radian']) for _ in range(num_cams - 1)]
+    cam_radian_array = [(sample_from_config(config['cam_radian']) * (config['cam_radian']['max'] - config['cam_radian']['min']) + config['cam_radian']['min']) for _ in range(num_cams - 1)]
 
     # cam radius
-    cam_radius = sample_from_config(config['cam_radius'])
+    if config['cam_radius']['distribution'] == 'gamma':
+        cam_radius = sample_from_config(config['cam_radius'])
+    elif config['cam_radius']['distribution'] == 'uniform':
+        cam_radius = sample_from_config(config['cam_radius']) * (config['cam_radius']['max'] - config['cam_radius']['min']) + config['cam_radius']['min']
 
     # cam angles
-    cam_angles = [sample_from_config(config['cam_angle']) for _ in range(num_cams)]
+    if config['cam_angle']['distribution'] == 'gamma':
+        cam_angles = [sample_from_config(config['cam_angle']) for _ in range(num_cams)]
+    elif config['cam_angle']['distribution'] == 'uniform':
+        cam_angles = [sample_from_config(config['cam_angle']) * (config['cam_angle']['max'] - config['cam_angle']['min']) + config['cam_angle']['min'] for _ in range(num_cams)]
 
     # cam heights
-    cam_heights = [sample_from_config(config['cam_heights']) for _ in range(num_cams)]
+    cam_heights = [sample_from_config(config['cam_heights']) * (config['cam_heights']['max'] - config['cam_heights']['min']) + config['cam_heights']['min'] for _ in range(num_cams)]
 
     return x0, v0, g, w, b, m, a, cam_radian_array, r, A, Cd, rho, cam_radius, cam_angles, cam_heights
 
@@ -243,7 +265,7 @@ def generate_data(
             raise ValueError(f'poi and x0 must have the same shape. poi.shape = {poi.shape}, x0.shape = {x0.shape}')
         distance = float(np.linalg.norm(poi - x0))
 
-        if not accept_traveled_distance(distance):
+        if not accept_traveled_distance(distance, cam_radius):
             rejected_count += 1
             pbar.set_postfix(accepted=accepted_count, rejected=rejected_count, ratio=accepted_count / (accepted_count + rejected_count))
             continue
@@ -258,9 +280,7 @@ def generate_data(
         for cam, angle in zip(cams_pos, cam_angles):
             cams.append(record_trajectory(traj, ratio, fov_horizontal, cam, make_gif=False, radius=r, viewing_angle=angle))
 
-        vis = np.sum([np.sum(cam) for cam in cams]) / (len(cams) * len(cams[0]))
-
-        if not accept_visibility(vis):
+        if not accept_visibility(cams):
             rejected_count += 1
             pbar.set_postfix(accepted=accepted_count, rejected=rejected_count, ratio=accepted_count / (accepted_count + rejected_count))
             continue
