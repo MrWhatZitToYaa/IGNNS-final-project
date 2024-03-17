@@ -8,6 +8,7 @@ from sklearn.mixture import GaussianMixture
 
 
 def gmm_approximation(frames: np.ndarray,
+                      path_to_save: str,
                       gif_name: str = 'video_gif',
                       save_gif: bool = True,
                       ratio: tuple = (16, 9)) -> np.ndarray:
@@ -44,16 +45,19 @@ def gmm_approximation(frames: np.ndarray,
             ims.append([im])
 
         ani = animation.ArtistAnimation(fig, ims, interval=33.3, blit=True, repeat_delay=1000)
-        ani.save(f'gifs/{gif_name}_gmm.gif', writer='imagemagick')
+        ani.save(f'{path_to_save}/{gif_name}_gmm.gif', writer='imagemagick')
 
     return heatmap
 
 
 def process_video(video_path: str,
+                  path_to_save: str,
                   gif_name: str = 'video_gif',
                   save_gif: bool = False,
                   ggm_approximation: bool = True,
-                  ratio: tuple = (16, 9)) -> np.ndarray:
+                  ratio: tuple = (16, 9),
+                  small_noise_threshold: float = 100,
+                  zero_threshold: float = 1500) -> np.ndarray:
     # read video
     cap = cv2.VideoCapture(f'{video_path}')
 
@@ -92,13 +96,13 @@ def process_video(video_path: str,
 
     # thresholding to remove small noise
     assert type(frames) is np.ndarray  # does this keep flake8 happy?
-    frames[frames < 100] = 0  # arbitrary threshold, feel free to play around with it
+    frames[frames < small_noise_threshold] = 0  # arbitrary threshold, feel free to play around with it
 
     # calculate average value per frame, and either black out or normalize the frame
     sums = np.sum(frames, axis=(1, 2))
 
     for i in range(len(sums)):
-        if sums[i] < 1500:  # second threshold to check wether object is in frame, again: arbitrary
+        if sums[i] < zero_threshold:  # second threshold to check wether object is in frame, again: arbitrary
             frames[i] = np.zeros((ratio[1] * 10, ratio[0] * 10))
         else:
             frames[i] = frames[i] / sums[i]
@@ -117,10 +121,10 @@ def process_video(video_path: str,
             ims.append([im])
 
         ani = animation.ArtistAnimation(fig, ims, interval=33.3, blit=True, repeat_delay=1000)
-        ani.save(f'gifs/{gif_name}.gif', writer='imagemagick')
+        ani.save(f'{path_to_save}/{gif_name}.gif', writer='imagemagick')
 
     if ggm_approximation:
-        return gmm_approximation(frames, gif_name, save_gif, ratio)
+        return gmm_approximation(frames, path_to_save, gif_name, save_gif, ratio)
 
     else:
         return frames
